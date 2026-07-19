@@ -219,7 +219,7 @@ export default function EventsPage() {
             </div>
 
             {/* Abas e Rotas Físicas (URL) */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs">
               <Link href={`/dashboard/eventos/${event.id}/editor`} className="flex flex-col items-center gap-1.5 p-2 rounded-lg bg-slate-900 border border-slate-850 hover:border-slate-700 hover:bg-slate-800/30 text-slate-300">
                 <Edit3 className="h-4 w-4 text-indigo-400" />
                 <span>Editar Site</span>
@@ -235,6 +235,10 @@ export default function EventsPage() {
               <Link href={`/dashboard/eventos/${event.id}/galeria`} className="flex flex-col items-center gap-1.5 p-2 rounded-lg bg-slate-900 border border-slate-850 hover:border-slate-700 hover:bg-slate-800/30 text-slate-300">
                 <ImageIcon className="h-4 w-4 text-pink-400" />
                 <span>Galeria</span>
+              </Link>
+              <Link href={`/dashboard/eventos/${event.id}/ia-assistant`} className="flex flex-col items-center gap-1.5 p-2 rounded-lg bg-slate-900 border border-slate-850 hover:border-slate-700 hover:bg-slate-800/30 text-slate-300">
+                <Sparkles className="h-4 w-4 text-purple-400" />
+                <span>Assistente IA</span>
               </Link>
             </div>
           </motion.div>
