@@ -7,50 +7,56 @@ export async function POST(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     
-    // Mercado Pago pode enviar ID via query string ou body
+    // Obter dados do pagamento
     let paymentId = searchParams.get('data.id') || searchParams.get('id');
-    let type = searchParams.get('type') || searchParams.get('topic');
+    let action = searchParams.get('type') || searchParams.get('topic') || searchParams.get('action');
 
-    // Tentar ler do body se não vier nos parâmetros de URL
+    // Tentar ler do body
     if (!paymentId) {
       try {
         const body = await req.json();
-        paymentId = body?.data?.id || body?.id;
-        type = body?.type || body?.action;
+        paymentId = body?.data?.id || body?.id || body?.resource;
+        action = body?.type || body?.action || action;
       } catch (_) {}
     }
 
     if (!paymentId) {
-      return NextResponse.json({ error: 'ID do pagamento não fornecido' }, { status: 400 });
+      return NextResponse.json({ error: 'Identificador do pagamento não fornecido' }, { status: 400 });
     }
 
-    // Apenas processa se for relacionado a pagamento
-    if (type === 'payment' || type === 'payment.created' || type === 'payment.updated') {
+    // IP de origem para auditoria
+    const ipAddress = req.headers.get('x-forwarded-for') || '127.0.0.1';
+
+    // Apenas processa tópicos de pagamento válidos (INSTRUÇÃO 12)
+    const validActions = [
+      'payment',
+      'payment.created',
+      'payment.pending',
+      'payment.approved',
+      'payment.cancelled',
+      'payment.refunded'
+    ];
+
+    if (action && (validActions.includes(action) || action.startsWith('payment.'))) {
+      // Obter detalhes completos do gateway (Mercado Pago)
       const paymentInfo = await getPaymentStatus(paymentId);
       const externalReference = paymentInfo.external_reference;
-      const status = paymentInfo.status; // approved, rejected, pending, etc.
+      const status = paymentInfo.status; // approved, pending, cancelled, etc.
 
       if (externalReference) {
         const supabaseAdmin = createAdminClient();
         const giftService = new GiftService(supabaseAdmin);
         
-        await giftService.handlePaymentWebhook(externalReference, paymentId, status);
-        
-        // Logar auditoria
-        await supabaseAdmin.from('audit_logs').insert({
-          action: 'PAYMENT_WEBHOOK_RECEIVED',
-          entity: 'transactions',
-          entity_id: externalReference,
-          details: { paymentId, status, type },
-        });
+        // Executar transações e auditorias internas no banco de dados
+        await giftService.handlePaymentWebhook(externalReference, paymentId, status, ipAddress);
 
-        return NextResponse.json({ success: true, processed: true });
+        return NextResponse.json({ success: true, processed: true, status });
       }
     }
 
     return NextResponse.json({ success: true, processed: false });
   } catch (error: any) {
-    console.error('Erro no webhook do Mercado Pago:', error);
+    console.error('Erro de processamento no webhook Mercado Pago:', error);
     return NextResponse.json(
       { error: error.message || 'Erro interno no processamento do webhook' },
       { status: 500 }

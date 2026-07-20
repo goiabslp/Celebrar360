@@ -27,9 +27,21 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user = null;
+  
+  // Se for ambiente de desenvolvimento com chaves fictícias, mockar login para testes locais rápidos
+  if (process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('placeholder-project-url')) {
+    user = { id: 'mock-user-123', email: 'guilherme@exemplo.com' };
+  } else {
+    try {
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser();
+      user = authUser;
+    } catch (e) {
+      console.warn('Erro na autenticação, prosseguindo com sessão vazia:', e);
+    }
+  }
 
   // Se o usuário não estiver logado e tentar acessar uma rota protegida (ex: /dashboard)
   if (!user && request.nextUrl.pathname.startsWith('/dashboard')) {

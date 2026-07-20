@@ -8,6 +8,9 @@ const checkoutSchema = z.object({
   buyerName: z.string().min(2, 'Nome deve conter pelo menos 2 caracteres'),
   buyerEmail: z.string().email('E-mail inválido'),
   buyerMessage: z.string().max(500, 'Mensagem deve ter no máximo 500 caracteres').optional(),
+  paymentMethod: z.enum(['pix', 'credit_card', 'debit_card']),
+  quotasToBuy: z.number().int().min(1).default(1),
+  customAmount: z.number().nonnegative().default(0),
   backUrl: z.string().url('URL de retorno inválida'),
 });
 
@@ -23,7 +26,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { giftId, buyerName, buyerEmail, buyerMessage, backUrl } = result.data;
+    const { 
+      giftId, 
+      buyerName, 
+      buyerEmail, 
+      buyerMessage, 
+      paymentMethod, 
+      quotasToBuy, 
+      customAmount, 
+      backUrl 
+    } = result.data;
 
     // Conexão com o Supabase usando o cliente de servidor
     const supabase = await createClient();
@@ -34,13 +46,17 @@ export async function POST(req: NextRequest) {
       buyerName,
       buyerEmail,
       buyerMessage || '',
+      paymentMethod,
+      quotasToBuy,
+      customAmount,
       backUrl
     );
 
     return NextResponse.json({
       success: true,
       checkoutUrl: purchaseDetails.checkoutUrl,
-      transactionId: purchaseDetails.transaction.id,
+      paymentId: purchaseDetails.payment.id,
+      externalReference: purchaseDetails.payment.external_reference,
     });
   } catch (error: any) {
     console.error('Erro na rota de checkout de presentes:', error);
